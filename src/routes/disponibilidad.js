@@ -164,10 +164,42 @@ router.post('/rango', requireAdmin, async (req, res, next) => {
 })
 
 // PATCH /disponibilidad/:id — habilitar/deshabilitar un slot
+// Si se habilita un slot ocupado, cancela el turno y notifica al cliente
 router.patch('/:id', requireAdmin, async (req, res, next) => {
   try {
     const { disponible } = req.body
-    await db.collection('disponibilidad').doc(req.params.id).update({
+    const slotId = req.params.id
+
+    if (disponible === true || disponible === 'true') {
+      const turnoSnap = await db.collection('turnos')
+        .where('disponibilidad_id', '==', slotId)
+        .where('estado', '==', 'confirmed')
+        .limit(1)
+        .get()
+
+      if (!turnoSnap.empty) {
+        const turnoDoc = turnoSnap.docs[0]
+        const turno = turnoDoc.data()
+
+        await db.runTransaction(async (t) => {
+          t.update(turnoDoc.ref, { estado: 'cancelled' })
+          t.update(db.collection('disponibilidad').doc(slotId), { disponible: true })
+        })
+
+        const { enviarCancelacion } = await import('../services/emailService.js')
+        enviarCancelacion({
+          email: turno.email,
+          nombre: turno.nombre_cliente,
+          servicio: turno.servicio_nombre,
+          fecha: turno.fecha,
+          hora: turno.hora,
+        }).catch(err => console.error('[Email cancelación por admin] Error:', err.message))
+
+        return res.json({ mensaje: 'Slot liberado y turno cancelado. El cliente fue notificado.' })
+      }
+    }
+
+    await db.collection('disponibilidad').doc(slotId).update({
       disponible: Boolean(disponible),
     })
     res.json({ mensaje: 'Slot actualizado' })

@@ -18,13 +18,11 @@ export async function requireAdmin(req, res, next) {
   }
 }
 
-// Middleware para verificar que el request venga de QStash (cron jobs)
+
 export function requireQStash(req, res, next) {
   const signingKey = req.headers['upstash-signature']
   if (!signingKey) {
     return res.status(401).json({ error: 'No autorizado' })
   }
-  // Verificación básica — para producción podés agregar la verificación
-  // de firma completa con @upstash/qstash Receiver
   next()
 }
