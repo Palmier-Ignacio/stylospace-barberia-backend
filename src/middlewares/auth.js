@@ -1,4 +1,5 @@
 import { auth } from '../config/firebase.js'
+import { Receiver } from '@upstash/qstash'
 
 export async function requireAdmin(req, res, next) {
   const authHeader = req.headers.authorization
@@ -19,15 +20,31 @@ export async function requireAdmin(req, res, next) {
 }
 
 
-export function requireQStash(req, res, next) {
-  const secret = req.headers['x-cron-secret']
-  console.log(req.headers)
-  console.log(process.env.CRON_SECRET)
+const receiver = new Receiver({
+  currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY,
+  nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY,
+})
 
+export async function requireQStash(req, res, next) {
+  try {
+    const signature = req.header('Upstash-Signature')
 
-  if (!secret || secret !== process.env.CRON_SECRET) {
+    if (!signature) {
+      return res.status(401).json({ error: 'Missing Upstash-Signature' })
+    }
+
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol
+    const url = `${protocol}://${req.get('host')}${req.originalUrl}`
+
+    await receiver.verify({
+      signature,
+      body: req.rawBody ?? "",
+      url,
+    })
+
+    next()
+  } catch (err) {
+    console.error('QStash verify error:', err)
     return res.status(401).json({ error: 'No autorizado' })
   }
-
-  next()
 }
