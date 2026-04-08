@@ -20,9 +20,11 @@ export async function requireAdmin(req, res, next) {
 
 
 export function requireQStash(req, res, next) {
-  const signingKey = req.headers['upstash-signature']
-  if (!signingKey) {
+  const secret = req.headers['x-cron-secret']
+
+  if (!secret || secret !== process.env.CRON_SECRET) {
     return res.status(401).json({ error: 'No autorizado' })
   }
+
   next()
 }
