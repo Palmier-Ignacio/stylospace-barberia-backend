@@ -38,7 +38,7 @@ export async function requireQStash(req, res, next) {
 
     await receiver.verify({
       signature,
-      body: JSON.stringify(req.body ?? {}),
+      body: req.rawBody ?? "",
       url,
     })
 

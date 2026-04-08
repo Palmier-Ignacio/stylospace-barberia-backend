@@ -23,7 +23,13 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }))
 
-app.use(express.json())
+app.set('trust proxy', true)
+
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf.toString('utf8')
+  },
+}))
 
 // Health check — Upstash lo pinga cada 5 minutos para que Render no duerma el servidor
 app.get('/ping', (req, res) => res.json({ ok: true, ts: Date.now() }))
