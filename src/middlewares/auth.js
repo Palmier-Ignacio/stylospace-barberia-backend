@@ -30,10 +30,11 @@ export async function requireQStash(req, res, next) {
     const signature = req.header('Upstash-Signature')
 
     if (!signature) {
-      return res.status(401).json({ error: 'Falta Upstash-Signature' })
+      return res.status(401).json({ error: 'Missing Upstash-Signature' })
     }
 
-    const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol
+    const url = `${protocol}://${req.get('host')}${req.originalUrl}`
 
     await receiver.verify({
       signature,
