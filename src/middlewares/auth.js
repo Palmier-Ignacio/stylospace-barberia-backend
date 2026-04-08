@@ -21,6 +21,9 @@ export async function requireAdmin(req, res, next) {
 
 export function requireQStash(req, res, next) {
   const secret = req.headers['x-cron-secret']
+  console.log(req.headers)
+  console.log(process.env.CRON_SECRET)
+
 
   if (!secret || secret !== process.env.CRON_SECRET) {
     return res.status(401).json({ error: 'No autorizado' })
