@@ -4,6 +4,32 @@ import { requireAdmin } from '../middlewares/auth.js'
 import { enviarConfirmacion, enviarCancelacion } from '../services/emailService.js'
 
 const router = Router()
+const MAX_DIAS_ANTICIPACION = 30
+const MIN_HORAS_ANTICIPACION = 12
+
+function parseDateOnly(fecha) {
+  const [year, month, day] = fecha.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function startOfToday() {
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  return hoy
+}
+
+function addDays(date, days) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}
+
+function estaDentroDeVentanaPublica(fecha) {
+  const fechaDate = parseDateOnly(fecha)
+  const hoy = startOfToday()
+  const limite = addDays(hoy, MAX_DIAS_ANTICIPACION)
+  return fechaDate >= hoy && fechaDate <= limite
+}
 
 // GET /turnos/admin — todos los turnos (con filtros opcionales)
 router.get('/admin', requireAdmin, async (req, res, next) => {
@@ -37,12 +63,10 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ error: 'Todos los campos son requeridos' })
     }
 
-    // Validar email básico
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Email inválido' })
     }
 
-    // Obtener el slot y el servicio en paralelo
     const [slotDoc, servicioDoc] = await Promise.all([
       db.collection('disponibilidad').doc(disponibilidad_id).get(),
       db.collection('servicios').doc(servicio_id).get(),
@@ -54,23 +78,25 @@ router.post('/', async (req, res, next) => {
     const slot = slotDoc.data()
     const servicio = servicioDoc.data()
 
+    if (!estaDentroDeVentanaPublica(slot.fecha)) {
+      return res.status(400).json({ error: 'Solo se pueden reservar turnos dentro de los próximos 30 días' })
+    }
+
     if (!slot.disponible) {
       return res.status(409).json({ error: 'El turno ya no está disponible' })
     }
 
-    // Validar 12hs de anticipación
     const ahora = new Date()
     const fechaSlot = new Date(`${slot.fecha}T${slot.hora_inicio}:00`)
     const diff = fechaSlot - ahora
-    if (diff < 12 * 60 * 60 * 1000) {
+    if (diff < MIN_HORAS_ANTICIPACION * 60 * 60 * 1000) {
       return res.status(400).json({ error: 'El turno debe reservarse con al menos 12 horas de anticipación' })
     }
 
-    // Transacción: marcar slot como ocupado y crear el turno
     await db.runTransaction(async (t) => {
       const slotRef = db.collection('disponibilidad').doc(disponibilidad_id)
       const slotFresh = await t.get(slotRef)
-      if (!slotFresh.data().disponible) {
+      if (!slotFresh.exists || !slotFresh.data().disponible) {
         throw { status: 409, message: 'El turno ya fue tomado por otro cliente' }
       }
 
@@ -93,7 +119,6 @@ router.post('/', async (req, res, next) => {
       t.update(slotRef, { disponible: false })
     })
 
-    // Enviar email de confirmación (no bloqueamos la respuesta si falla)
     enviarConfirmacion({
       email,
       nombre: nombre_cliente,
@@ -119,13 +144,10 @@ router.patch('/:id/cancelar', requireAdmin, async (req, res, next) => {
     const turno = turnoDoc.data()
 
     await db.runTransaction(async (t) => {
-      // Cancelar el turno
       t.update(db.collection('turnos').doc(req.params.id), { estado: 'cancelled' })
-      // Liberar el slot
       t.update(db.collection('disponibilidad').doc(turno.disponibilidad_id), { disponible: true })
     })
 
-    // Email de cancelación al cliente
     enviarCancelacion({
       email: turno.email,
       nombre: turno.nombre_cliente,
