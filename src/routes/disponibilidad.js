@@ -66,9 +66,21 @@ function calcularHoraFin(horaInicio, duracionMin) {
   return `${String(Math.floor(finMin / 60)).padStart(2, '0')}:${String(finMin % 60).padStart(2, '0')}`
 }
 
+function getNowArgentina() {
+  const now = new Date()
+  return new Date(now.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }))
+}
+
+function construirFechaHoraArgentina(fecha, hora) {
+  const [year, month, day] = fecha.split('-').map(Number)
+  const [hours, minutes] = hora.split(':').map(Number)
+  return new Date(year, month - 1, day, hours, minutes, 0, 0)
+}
+
 function esSlotReservable(fecha, horaInicio) {
-  const limite = new Date(Date.now() + MIN_HORAS_ANTICIPACION * 60 * 60 * 1000)
-  const slotDate = new Date(`${fecha}T${horaInicio}:00`)
+  const ahoraArgentina = getNowArgentina()
+  const limite = new Date(ahoraArgentina.getTime() + MIN_HORAS_ANTICIPACION * 60 * 60 * 1000)
+  const slotDate = construirFechaHoraArgentina(fecha, horaInicio)
   return slotDate > limite
 }
 
