@@ -28,6 +28,7 @@ export async function procesarRecordatorios() {
     const turno = doc.data()
     try {
       await enviarRecordatorio({
+        turnoId: doc.id,
         email: turno.email,
         nombre: turno.nombre_cliente,
         servicio: turno.servicio_nombre,
