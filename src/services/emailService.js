@@ -1,4 +1,5 @@
 import * as Brevo from '@getbrevo/brevo'
+import { crearLinkCancelacion, getCanalesContacto } from './cancelacionService.js'
 
 const apiInstance = new Brevo.TransactionalEmailsApi()
 apiInstance.authentications['apiKey'].apiKey = process.env.BREVO_API_KEY
@@ -15,6 +16,42 @@ function formatFecha(fechaStr) {
   return `${d} de ${meses[parseInt(m) - 1]} de ${y}`
 }
 
+
+function botonHtml({ href, label, background = '#0a0a0a', color = '#fafafa', border = '#0a0a0a' }) {
+  if (!href) return ''
+  return `
+    <a href="${href}" style="display: inline-block; padding: 12px 18px; margin-right: 12px; margin-bottom: 12px; border-radius: 8px; text-decoration: none; font-weight: 600; background: ${background}; color: ${color}; border: 1px solid ${border};">
+      ${label}
+    </a>
+  `
+}
+
+function bloqueAccionCancelacion(turnoId) {
+  const cancelUrl = crearLinkCancelacion(turnoId)
+  if (!cancelUrl) return ''
+
+  return `
+    <div style="margin-top: 24px;">
+      <p style="color: #555; font-size: 14px; margin-bottom: 12px;">
+        Si querés cancelar tu turno, podés hacerlo desde el siguiente botón. Recordá que solo está habilitado hasta 12 horas antes del horario reservado.
+      </p>
+      ${botonHtml({ href: cancelUrl, label: 'Cancelar turno' })}
+    </div>
+  `
+}
+
+function bloqueContacto() {
+  const { whatsapp, instagram } = getCanalesContacto()
+  if (!whatsapp && !instagram) return ''
+
+  return `
+    <div style="margin-top: 16px;">
+      ${botonHtml({ href: whatsapp, label: 'WhatsApp', background: '#25D366', color: '#ffffff', border: '#25D366' })}
+      ${botonHtml({ href: instagram, label: 'Instagram', background: '#ffffff', color: '#0a0a0a', border: '#d0d0d0' })}
+    </div>
+  `
+}
+
 function templateBase(contenido) {
   return `
     <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #fafafa;">
@@ -26,7 +63,7 @@ function templateBase(contenido) {
   `
 }
 
-export async function enviarConfirmacion({ email, nombre, servicio, fecha, hora, precio }) {
+export async function enviarConfirmacion({ turnoId, email, nombre, servicio, fecha, hora, precio }) {
   const fechaLinda = formatFecha(fecha)
 
   const mail = new Brevo.SendSmtpEmail()
@@ -49,14 +86,16 @@ export async function enviarConfirmacion({ email, nombre, servicio, fecha, hora,
     </div>
 
     <p style="color: #555; font-size: 14px;">
-      Si necesitás cancelar o reprogramar, contactanos con al menos 12 horas de anticipación.
+      Si necesitás cancelar o reprogramar, hacelo con al menos 12 horas de anticipación.
     </p>
+
+    ${bloqueAccionCancelacion(turnoId)}
   `)
 
   await apiInstance.sendTransacEmail(mail)
 }
 
-export async function enviarRecordatorio({ email, nombre, servicio, fecha, hora }) {
+export async function enviarRecordatorio({ turnoId, email, nombre, servicio, fecha, hora }) {
   const fechaLinda = formatFecha(fecha)
 
   const mail = new Brevo.SendSmtpEmail()
@@ -75,7 +114,9 @@ export async function enviarRecordatorio({ email, nombre, servicio, fecha, hora 
       <p style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;">${fechaLinda} a las ${hora}</p>
     </div>
 
-    <p style="color: #555; font-size: 14px;">¡Nos vemos mañana!</p>
+    <p style="color: #555; font-size: 14px;">Si necesitás cancelar, todavía podés intentarlo desde el botón de abajo, siempre que falten 12 horas o más para tu turno.</p>
+
+    ${bloqueAccionCancelacion(turnoId)}
   `)
 
   await apiInstance.sendTransacEmail(mail)
