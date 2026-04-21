@@ -81,6 +81,14 @@ export async function enviarConfirmacion({ turnoId, email, nombre, servicio, fec
       <p style="margin: 0 0 8px; color: #888; font-size: 13px;">FECHA Y HORA</p>
       <p style="margin: 0 0 20px; font-size: 18px; font-weight: 600; color: #1a1a1a;">${fechaLinda} a las ${hora}</p>
 
+      <p style="margin: 0 0 8px; color: #888; font-size: 13px;">UBICACIÓN</p>
+      <p style="margin: 0 0 20px; font-size: 18px; font-weight: 600; color: #1a1a1a;"> 
+                Haydn 3175, William C. Morris <br />
+                <a target="_blank" href="https://maps.app.goo.gl/hh1Lj26j8GtJi1jd7">
+                  ver en google maps →
+                </a>
+      </p>
+
       <p style="margin: 0 0 8px; color: #888; font-size: 13px;">PRECIO</p>
       <p style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;">$${precio}</p>
     </div>
@@ -112,6 +120,15 @@ export async function enviarRecordatorio({ turnoId, email, nombre, servicio, fec
 
       <p style="margin: 0 0 8px; color: #888; font-size: 13px;">FECHA Y HORA</p>
       <p style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;">${fechaLinda} a las ${hora}</p>
+
+      <p style="margin: 0 0 8px; color: #888; font-size: 13px;">UBICACIÓN</p>
+      <p style="margin: 0 0 20px; font-size: 18px; font-weight: 600; color: #1a1a1a;"> 
+                Haydn 3175, William C. Morris <br />
+                <a target="_blank" href="https://maps.app.goo.gl/hh1Lj26j8GtJi1jd7">
+                  ver en google maps →
+                </a>
+      </p>
+
     </div>
 
     <p style="color: #555; font-size: 14px;">Si necesitás cancelar, todavía podés intentarlo desde el botón de abajo, siempre que falten 12 horas o más para tu turno.</p>
