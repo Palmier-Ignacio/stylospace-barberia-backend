@@ -19,7 +19,7 @@ function parseDateOnly(fecha) {
 }
 
 function startOfToday() {
-  const hoy = new Date()
+  const hoy = getNowArgentina()
   hoy.setHours(0, 0, 0, 0)
   return hoy
 }
@@ -67,8 +67,28 @@ function calcularHoraFin(horaInicio, duracionMin) {
 }
 
 function getNowArgentina() {
-  const now = new Date()
-  return new Date(now.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }))
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    hourCycle: 'h23',
+  }).formatToParts(new Date())
+
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]))
+  return new Date(
+    Number(values.year),
+    Number(values.month) - 1,
+    Number(values.day),
+    Number(values.hour),
+    Number(values.minute),
+    Number(values.second),
+    0
+  )
 }
 
 function construirFechaHoraArgentina(fecha, hora) {
@@ -254,11 +274,10 @@ router.get('/', async (req, res, next) => {
   try {
     const { fecha } = req.query
     if (!fecha) return res.status(400).json({ error: 'fecha requerida' })
-    const hoy = new Date()
+    const hoy = startOfToday()
     const fechaDate = parseDateOnly(fecha)
 
-    const limite = new Date()
-    limite.setDate(hoy.getDate() + 30)
+    const limite = addDays(hoy, MAX_DIAS_ANTICIPACION)
 
     if (fechaDate > limite) {
       return res.status(400).json({ error: 'Fecha fuera del rango permitido' })
@@ -443,21 +462,35 @@ router.patch('/:id', requireAdmin, async (req, res, next) => {
         const turnoDoc = turnoSnap.docs[0]
         const turno = turnoDoc.data()
 
+        const ahoraArgentina = getNowArgentina()
+        const fechaHoraTurno = construirFechaHoraArgentina(turno.fecha, turno.hora)
+        const turnoYaPaso = fechaHoraTurno < ahoraArgentina
+
         await db.runTransaction(async (t) => {
-          t.update(turnoDoc.ref, { estado: 'cancelled' })
+          t.update(turnoDoc.ref, {
+            estado: 'cancelled',
+            cancelado_por: 'admin',
+            cancelado_en: new Date().toISOString(),
+          })
           t.update(slotRef, { disponible: true })
         })
 
         const { enviarCancelacion } = await import('../services/emailService.js')
-        enviarCancelacion({
-          email: turno.email,
-          nombre: turno.nombre_cliente,
-          servicio: turno.servicio_nombre,
-          fecha: turno.fecha,
-          hora: turno.hora,
-        }).catch(err => console.error('[Email cancelación por admin] Error:', err.message))
+        if (!turnoYaPaso) {
+          enviarCancelacion({
+            email: turno.email,
+            nombre: turno.nombre_cliente,
+            servicio: turno.servicio_nombre,
+            fecha: turno.fecha,
+            hora: turno.hora,
+          }).catch(err => console.error('[Email cancelación] Error:', err.message))
+        }
 
-        return res.json({ mensaje: 'Slot liberado y turno cancelado. El cliente fue notificado.' })
+        return res.json({
+          mensaje: turnoYaPaso
+            ? 'Turno cancelado sin notificar al cliente porque ya había pasado'
+            : 'Turno cancelado, slot liberado y cliente notificado',
+        })
       }
     }
 

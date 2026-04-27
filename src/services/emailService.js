@@ -11,8 +11,8 @@ const FROM = {
 
 function formatFecha(fechaStr) {
   const [y, m, d] = fechaStr.split('-')
-  const meses = ['enero','febrero','marzo','abril','mayo','junio',
-                  'julio','agosto','septiembre','octubre','noviembre','diciembre']
+  const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
   return `${d} de ${meses[parseInt(m) - 1]} de ${y}`
 }
 
@@ -55,6 +55,10 @@ function bloqueContacto() {
 function templateBase(contenido) {
   return `
     <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #fafafa;">
+      <h1 style="color: #1a1a1a; margin-bottom: 4px;">Stylo Space Barbería</h1>
+      <p style="color: #aaa; font-size: 12px; margin-top: 32px;">
+        Este es un mensaje automático, no respondas a este email.
+      </p>
       ${contenido}
       <p style="color: #aaa; font-size: 12px; margin-top: 32px;">
         Este es un mensaje automático, no respondas a este email.
@@ -91,7 +95,12 @@ export async function enviarConfirmacion({ turnoId, email, nombre, servicio, fec
 
       <p style="margin: 0 0 8px; color: #888; font-size: 13px;">PRECIO</p>
       <p style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;">$${precio}</p>
+      
     </div>
+
+    <p style="color: #555; font-size: 14px;">Si tenés alguna consulta, contactanos por nuestros canales oficiales.</p>
+
+    ${bloqueContacto()}
 
     <p style="color: #555; font-size: 14px;">
       Si necesitás cancelar o reprogramar, hacelo con al menos 12 horas de anticipación.
@@ -131,12 +140,69 @@ export async function enviarRecordatorio({ turnoId, email, nombre, servicio, fec
 
     </div>
 
-    <p style="color: #555; font-size: 14px;">Si necesitás cancelar, todavía podés intentarlo desde el botón de abajo, siempre que falten 12 horas o más para tu turno.</p>
+    <p style="color: #555; font-size: 14px;">Si tenés alguna consulta, contactanos por nuestros canales oficiales.</p>
 
+    ${bloqueContacto()}
+    
+    <p style="color: #555; font-size: 14px;">Si necesitás cancelar, todavía podés intentarlo desde el botón de abajo, siempre que falten 12 horas o más para tu turno.</p>
+    
     ${bloqueAccionCancelacion(turnoId)}
   `)
 
   await apiInstance.sendTransacEmail(mail)
+}
+
+
+export async function enviarModificacion({ email, nombre, cambios = [], turnoAnterior, turnoNuevo, turnoId }) {
+  const fechaAnterior = formatFecha(turnoAnterior.fecha)
+  const fechaNueva = formatFecha(turnoNuevo.fecha)
+  const huboReprogramacion = cambios.includes('fecha_hora')
+  const resumenCambios = cambios.length
+    ? cambios.map(cambio => `<li style="margin-bottom: 6px;">${labelCambio(cambio)}</li>`).join('')
+    : '<li style="margin-bottom: 6px;">Información del turno actualizada</li>'
+
+  const mail = new Brevo.SendSmtpEmail()
+  mail.sender = FROM
+  mail.to = [{ email, name: nombre }]
+  mail.subject = huboReprogramacion ? '✂️ Tu turno fue reprogramado' : '✂️ Tu turno fue modificado'
+  mail.htmlContent = templateBase(`
+    <h2 style="color: #1a1a1a; margin-bottom: 4px;">${huboReprogramacion ? 'Tu turno fue reprogramado' : 'Tu turno fue modificado'}</h2>
+    <p style="color: #555; margin-top: 0;">Hola <strong>${nombre}</strong>, te avisamos que el equipo de Stylo Space actualizó la información de tu turno.</p>
+
+    <div style="background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0 0 10px; color: #888; font-size: 13px;">CAMBIOS REALIZADOS</p>
+      <ul style="margin: 0; padding-left: 18px; color: #333;">${resumenCambios}</ul>
+    </div>
+
+    <div style="background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px; margin: 24px 0;">
+      <p style="margin: 0 0 8px; color: #888; font-size: 13px;">ANTES</p>
+      <p style="margin: 0 0 16px; color: #555;">${turnoAnterior.servicio} — ${fechaAnterior} a las ${turnoAnterior.hora} — $${turnoAnterior.precio}</p>
+
+      <p style="margin: 0 0 8px; color: #888; font-size: 13px;">AHORA</p>
+      <p style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;">${turnoNuevo.servicio} — ${fechaNueva} a las ${turnoNuevo.hora} — $${turnoNuevo.precio}</p>
+    </div>
+
+    <p style="color: #555; font-size: 14px;">
+      Si necesitás hacer otra modificación o tenés alguna consulta, contactanos por nuestros canales oficiales.
+    </p>
+
+    ${bloqueContacto()}
+    ${bloqueAccionCancelacion(turnoId)}
+  `)
+
+  await apiInstance.sendTransacEmail(mail)
+}
+
+function labelCambio(cambio) {
+  const labels = {
+    nombre: 'Nombre del cliente',
+    email: 'Email de contacto',
+    contacto: 'Teléfono o canal de contacto',
+    servicio: 'Servicio reservado',
+    fecha_hora: 'Fecha u horario del turno',
+    precio: 'Precio del servicio',
+  }
+  return labels[cambio] || 'Información del turno'
 }
 
 export async function enviarCancelacion({ email, nombre, servicio, fecha, hora }) {
@@ -161,6 +227,10 @@ export async function enviarCancelacion({ email, nombre, servicio, fecha, hora }
     <p style="color: #555; font-size: 14px;">
       Si querés reservar un nuevo turno podés hacerlo desde nuestra página web.
     </p>
+
+    <p style="color: #555; font-size: 14px;">Si tenés alguna consulta, contactanos por nuestros canales oficiales.</p>
+
+    ${bloqueContacto()}
   `)
 
   await apiInstance.sendTransacEmail(mail)

@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import { construirFechaHoraArgentina, getNowArgentina } from '../utils/argentinaDate.js'
 
 const MIN_HORAS_CANCELACION = 12
 
@@ -7,7 +8,7 @@ function getSecret() {
 }
 
 export function buildTurnoDate(fecha, hora) {
-  return new Date(`${fecha}T${hora}:00`)
+  return construirFechaHoraArgentina(fecha, hora)
 }
 
 export function puedeCancelarTurno(turno) {
@@ -19,7 +20,7 @@ export function puedeCancelarTurno(turno) {
     return { ok: false, code: 'already_cancelled', message: 'Este turno ya fue cancelado' }
   }
 
-  const ahora = new Date()
+  const ahora = getNowArgentina()
   const fechaTurno = buildTurnoDate(turno.fecha, turno.hora)
   const diffMs = fechaTurno - ahora
   const minMs = MIN_HORAS_CANCELACION * 60 * 60 * 1000
