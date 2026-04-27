@@ -1,11 +1,10 @@
 import { db } from '../config/firebase.js'
 import { enviarRecordatorio } from './emailService.js'
+import { tomorrowDateOnlyArgentina } from '../utils/argentinaDate.js'
 
 export async function procesarRecordatorios() {
-  // Calcular fecha de mañana en formato YYYY-MM-DD
-  const manana = new Date()
-  manana.setDate(manana.getDate() + 1)
-  const fechaStr = manana.toISOString().split('T')[0]
+  // Calcular mañana en Argentina en formato YYYY-MM-DD.
+  const fechaStr = tomorrowDateOnlyArgentina()
 
   console.log(`[Recordatorios] Buscando turnos para ${fechaStr}`)
 
