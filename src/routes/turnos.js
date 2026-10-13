@@ -6,7 +6,7 @@ import { getCanalesContacto, puedeCancelarTurno, validarTokenCancelacion } from 
 
 const router = Router()
 const MAX_DIAS_ANTICIPACION = 30
-const MIN_HORAS_ANTICIPACION = 12
+const MIN_HORAS_ANTICIPACION = 2
 
 function parseDateOnly(fecha) {
   const [year, month, day] = fecha.split('-').map(Number)
@@ -251,7 +251,7 @@ router.post('/', async (req, res, next) => {
 const fechaSlot = construirFechaHoraArgentina(slot.fecha, slot.hora_inicio)
 const diff = fechaSlot - ahoraArgentina
     if (diff < MIN_HORAS_ANTICIPACION * 60 * 60 * 1000) {
-      return res.status(400).json({ error: 'El turno debe reservarse con al menos 12 horas de anticipación' })
+      return res.status(400).json({ error: 'El turno debe reservarse con al menos 2 horas de anticipación' })
     }
 
     const turnoRef = db.collection('turnos').doc()
