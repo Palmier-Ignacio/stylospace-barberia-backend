@@ -4,7 +4,7 @@ import { requireAdmin } from '../middlewares/auth.js'
 
 const router = Router()
 const MAX_DIAS_ANTICIPACION = 30
-const MIN_HORAS_ANTICIPACION = 12
+const MIN_HORAS_ANTICIPACION = 2
 
 function formatFechaLocal(date) {
   const year = date.getFullYear()
@@ -101,7 +101,7 @@ function esSlotReservable(fecha, horaInicio) {
   const ahoraArgentina = getNowArgentina()
   const limite = new Date(ahoraArgentina.getTime() + MIN_HORAS_ANTICIPACION * 60 * 60 * 1000)
   const slotDate = construirFechaHoraArgentina(fecha, horaInicio)
-  return slotDate > limite
+  return slotDate >= limite
 }
 
 function crearResumenVacio(fecha) {
